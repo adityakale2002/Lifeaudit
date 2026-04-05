@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --bg:       #080C0A;
+  --surface:  #0F1510;
+  --surface2: #141C15;
+  --border:   #1C2620;
+  --border2:  #243028;
+  --teal:     #2DD4BF;
+  --teal-dim: #134E4A;
+  --text:     #F0F5F1;
+  --sub:      #6B7F70;
+  --muted:    #3A4A3E;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+html { scroll-behavior: smooth; }
+
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #1C2620; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2DD4BF30; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.3s ease both; }
+
+.gradient-text {
+  background: linear-gradient(135deg, #2DD4BF, #5EEAD4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle glow for teal elements */
+.teal-glow { box-shadow: 0 0 20px #2DD4BF18; }
