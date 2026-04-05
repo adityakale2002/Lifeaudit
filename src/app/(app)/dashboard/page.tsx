@@ -17,9 +17,9 @@ import type { TimeEntry, Expense, LifeBucket } from "@/lib/supabase/types";
 
 const DAILY_KEYS = ["work","family","health","growth","leisure","admin"] as const;
 
-function getWeekRange() {
+function getWeekRange(weeksAgo = 0) {
   const now = new Date(), day = now.getDay();
-  const mon = new Date(now); mon.setDate(now.getDate() - ((day + 6) % 7));
+  const mon = new Date(now); mon.setDate(now.getDate() - ((day + 6) % 7) - (weeksAgo * 7));
   const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
   const fmt = (d: Date) => d.toISOString().split("T")[0];
   return { from: fmt(mon), to: fmt(sun) };
@@ -67,20 +67,32 @@ export default function DashboardPage() {
   const { profile } = useAuth();
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [expenses,    setExpenses]    = useState<Expense[]>([]);
+  const [lastWeekTimeEntries, setLastWeekTimeEntries] = useState<TimeEntry[]>([]);
+  const [lastWeekExpenses,    setLastWeekExpenses]    = useState<Expense[]>([]);
   const [hasRealData, setHasRealData] = useState(false);
   const [loading,     setLoading]     = useState(true);
 
   const loadData = useCallback(async () => {
-    const { from, to } = getWeekRange();
-    const [te, ex] = await Promise.all([
-      fetch(`/api/entries?from=${from}&to=${to}`).then((r) => r.json()),
-      fetch(`/api/expenses?from=${from}&to=${to}`).then((r) => r.json()),
+    const thisWeek = getWeekRange(0);
+    const lastWeek = getWeekRange(1);
+    
+    const [te, ex, lte, lex] = await Promise.all([
+      fetch(`/api/entries?from=${thisWeek.from}&to=${thisWeek.to}`).then((r) => r.json()),
+      fetch(`/api/expenses?from=${thisWeek.from}&to=${thisWeek.to}`).then((r) => r.json()),
+      fetch(`/api/entries?from=${lastWeek.from}&to=${lastWeek.to}`).then((r) => r.json()),
+      fetch(`/api/expenses?from=${lastWeek.from}&to=${lastWeek.to}`).then((r) => r.json()),
     ]);
+    
     const entries = (te.data ?? []) as TimeEntry[];
     const exps    = (ex.data ?? []) as Expense[];
+    const lastEntries = (lte.data ?? []) as TimeEntry[];
+    const lastExps    = (lex.data ?? []) as Expense[];
+    
     const hasData = entries.length > 0 || exps.length > 0;
     setTimeEntries(hasData ? entries : MOCK_TIME_THIS_WEEK as unknown as TimeEntry[]);
     setExpenses(hasData    ? exps    : MOCK_EXPENSES as unknown as Expense[]);
+    setLastWeekTimeEntries(lastEntries);
+    setLastWeekExpenses(lastExps);
     setHasRealData(hasData);
     setLoading(false);
   }, []);
@@ -101,6 +113,20 @@ export default function DashboardPage() {
 
   const totalHours = Object.values(timeTotals).reduce((s, v) => s + (v ?? 0), 0);
   const totalSpend = Object.values(expTotals).reduce((s, v) => s + (v ?? 0), 0);
+
+  // Last week totals for comparison
+  const lastWeekTimeTotals = lastWeekTimeEntries.reduce<Partial<Record<LifeBucket, number>>>((acc, e) => {
+    acc[e.bucket] = (acc[e.bucket] ?? 0) + Number(e.hours); return acc;
+  }, {});
+  const lastWeekExpTotals = lastWeekExpenses.reduce<Partial<Record<LifeBucket, number>>>((acc, e) => {
+    acc[e.bucket] = (acc[e.bucket] ?? 0) + Number(e.amount); return acc;
+  }, {});
+  
+  const lastTotalHours = Object.values(lastWeekTimeTotals).reduce((s, v) => s + (v ?? 0), 0);
+  const lastTotalSpend = Object.values(lastWeekExpTotals).reduce((s, v) => s + (v ?? 0), 0);
+  
+  const hoursDelta = totalHours - lastTotalHours;
+  const spendDelta = totalSpend - lastTotalSpend;
 
   const TIME_DATA = Object.entries(timeTotals)
     .map(([b, h]) => ({ name: BUCKET_META[b as LifeBucket].label, value: h, color: BUCKET_META[b as LifeBucket].color }))
@@ -169,8 +195,24 @@ export default function DashboardPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard icon={Clock}          label="Hours Tracked"  value={`${totalHours.toFixed(1)}h`}          delta={hasRealData ? "This week" : "Sample"} />
-          <StatCard icon={IndianRupee}    label="Total Spend"    value={`₹${totalSpend.toFixed(0)}`}          delta={hasRealData ? "This week" : "Sample"} />
+          <StatCard 
+            icon={Clock} 
+            label="Hours Tracked" 
+            value={`${totalHours.toFixed(1)}h`}
+            delta={hasRealData && lastTotalHours > 0 
+              ? `${hoursDelta >= 0 ? '+' : ''}${hoursDelta.toFixed(1)}h vs last week`
+              : hasRealData ? "This week" : "Sample"}
+            up={hoursDelta > 0 ? true : hoursDelta < 0 ? false : null}
+          />
+          <StatCard 
+            icon={IndianRupee} 
+            label="Total Spend" 
+            value={`₹${totalSpend.toFixed(0)}`}
+            delta={hasRealData && lastTotalSpend > 0
+              ? `${spendDelta >= 0 ? '+' : ''}₹${Math.abs(spendDelta).toFixed(0)} vs last week`
+              : hasRealData ? "This week" : "Sample"}
+            up={spendDelta < 0 ? true : spendDelta > 0 ? false : null}
+          />
           <StatCard icon={Cpu}            label="Screen Time"    value="—"                                     delta="Upload to track" />
           <StatCard icon={Activity}       label="Alignment"      value={`${Math.round(alignScore)}%`}
             delta={alignScore >= 70 ? "Looking good" : "Room to improve"}

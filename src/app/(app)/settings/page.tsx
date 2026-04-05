@@ -315,8 +315,31 @@ export default function SettingsPage() {
               Sign Out
             </button>
           </div>
+
+          {/* Export Data */}
+          <div className="bg-[#0F1510] border border-[#1C2620] rounded-xl p-6">
+            <h3 className="font-bold text-[#F0F5F1] text-sm mb-3">Export Your Data</h3>
+            <p className="text-xs text-[#3A4A3E] mb-4">Download all your data for backup or analysis</p>
+            <div className="flex gap-2">
+              <a
+                href="/api/export?format=json"
+                download
+                className="flex-1 py-2.5 rounded-xl border border-[#2DD4BF]/20 text-[#2DD4BF] text-xs font-semibold hover:bg-[#2DD4BF]/8 transition-all text-center"
+              >
+                Export JSON
+              </a>
+              <a
+                href="/api/export?format=csv"
+                download
+                className="flex-1 py-2.5 rounded-xl border border-[#2DD4BF]/20 text-[#2DD4BF] text-xs font-semibold hover:bg-[#2DD4BF]/8 transition-all text-center"
+              >
+                Export CSV
+              </a>
+            </div>
+          </div>
+
           <div className="text-xs text-[#3A4A3E] text-center">
-            Life Audit App · Phase 4 · Built with Next.js + Supabase + Claude
+            Life Audit App · Phase 6 · Built with Next.js + Supabase + OpenAI
           </div>
         </div>
       )}
